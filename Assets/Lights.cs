@@ -2,28 +2,24 @@ using UnityEngine;
 
 public class LightSwitcher : MonoBehaviour
 {
-    
-    public Light myLight;
+    [Header("Настройки")]
+    [SerializeField] private Light targetLight;
+    [SerializeField] private KeyCode switchKey = KeyCode.F;
 
-    void Start()
+    void Awake()
     {
-        
-        if (myLight == null)
+        // Ищем свет сначала на самом объекте, затем в дочерних
+        if (targetLight == null)
         {
-            myLight = GetComponent<Light>();
+            targetLight = GetComponentInChildren<Light>();
         }
     }
 
     void Update()
     {
-        
-        if (Input.GetKeyDown(KeyCode.F))
+        if (Input.GetKeyDown(switchKey) && targetLight != null)
         {
-            
-            if (myLight != null)
-            {
-                myLight.enabled = !myLight.enabled;
-            }
+            targetLight.enabled = !targetLight.enabled;
         }
     }
 }

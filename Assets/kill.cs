@@ -1,49 +1,115 @@
 using UnityEngine;
-using TMPro; // Добавляем для работы с текстом
+using TMPro;
+using UnityEngine.UI;
+using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class EnemyTouch : MonoBehaviour
 {
     [Header("Настройки")]
     public string playerTag = "Player";
-    
-    [Header("UI Смерти")]
-    public TextMeshProUGUI deathText; // Перетащите сюда объект текста (например, "YOU DIED")
+    public string menuSceneName = "Menu"; // Исправил на "Menu"
+
+    [Header("UI Элементы")]
+    public TextMeshProUGUI deathText;
     public string deathMessage = "ВЫ ПОЙМАНЫ";
+    public GameObject deathMenu;
+    public CanvasGroup fadePanel;
+
+    [Header("Кнопки")]
+    public Button retryButton;
+    public Button menuButton;
+
+    [Header("Параметры эффектов")]
+    public float fadeSpeed = 0.8f;
+
+    private bool isDead = false;
 
     private void Start()
     {
-        // Скрываем текст в начале игры
+        // Скрываем всё при старте
         if (deathText != null) deathText.gameObject.SetActive(false);
+        if (deathMenu != null) deathMenu.gameObject.SetActive(false);
+
+        // Скрываем кнопки персонально (на всякий случай)
+        if (retryButton != null) retryButton.gameObject.SetActive(false);
+        if (menuButton != null) menuButton.gameObject.SetActive(false);
+
+        if (fadePanel != null)
+        {
+            fadePanel.alpha = 0;
+            fadePanel.blocksRaycasts = false;
+        }
+
+        // Назначаем функции
+        if (retryButton != null) retryButton.onClick.AddListener(RestartLevel);
+        if (menuButton != null) menuButton.onClick.AddListener(GoToMenu);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag(playerTag))
+        if (other.CompareTag(playerTag) && !isDead)
         {
-            // 1. Показываем текст смерти
-            if (deathText != null)
-            {
-                deathText.text = deathMessage;
-                deathText.gameObject.SetActive(true);
-            }
+            isDead = true;
+            StartCoroutine(GameOverSequence());
+        }
+    }
 
-            // 2. Запускаем затемнение
-            ScreenFader fader = FindObjectOfType<ScreenFader>();
-            if (fader != null)
-            {
-                fader.StartFade();
-            }
+    IEnumerator GameOverSequence()
+    {
+        if (TryGetComponent<UnityEngine.AI.NavMeshAgent>(out var agent))
+            agent.isStopped = true;
 
-            // 3. Останавливаем врага
-            if (TryGetComponent<UnityEngine.AI.NavMeshAgent>(out var agent))
+        DisableEnemyLogic();
+
+        if (deathText != null)
+        {
+            deathText.text = deathMessage;
+            deathText.gameObject.SetActive(true);
+        }
+
+        if (fadePanel != null)
+        {
+            fadePanel.blocksRaycasts = true;
+            while (fadePanel.alpha < 1)
             {
-                agent.isStopped = true;
+                fadePanel.alpha += Time.unscaledDeltaTime * fadeSpeed;
+                yield return null;
             }
-            
-            // 4. Отключаем скрипты логики (патруль, погоня, таунт)
-            if (TryGetComponent<EnemyAI>(out var ai)) ai.enabled = false;
-            if (TryGetComponent<EnemyChase>(out var chase)) chase.enabled = false;
-            if (TryGetComponent<EnemyTaunt>(out var taunt)) taunt.enabled = false;
+        }
+
+        // ВКЛЮЧАЕМ МЕНЮ И КНОПКИ
+        if (deathMenu != null) deathMenu.SetActive(true);
+        if (retryButton != null) retryButton.gameObject.SetActive(true);
+        if (menuButton != null) menuButton.gameObject.SetActive(true);
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        Time.timeScale = 0f;
+    }
+
+    public void RestartLevel()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void GoToMenu()
+    {
+        Time.timeScale = 1f;
+        // Используем переменную menuSceneName
+        SceneManager.LoadScene(menuSceneName);
+    }
+
+    private void DisableEnemyLogic()
+    {
+        MonoBehaviour[] scripts = GetComponents<MonoBehaviour>();
+        foreach (var s in scripts)
+        {
+            string n = s.GetType().Name.ToLower();
+            if (s != this && (n.Contains("enemy") || n.Contains("ai") || n.Contains("chase")))
+                s.enabled = false;
         }
     }
 }

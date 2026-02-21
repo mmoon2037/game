@@ -21,7 +21,7 @@ public class grab : MonoBehaviour
             counter.SetText(currentCount.ToString());
 
             // Активируем выход строго при достижении 15
-            if (currentCount >= 2)
+            if (currentCount >= 7)
             {
                 EscapeZone escape = FindObjectOfType<EscapeZone>(true);
                 if (escape != null)
